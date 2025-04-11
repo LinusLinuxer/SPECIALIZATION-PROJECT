@@ -1,0 +1,9 @@
+Shelfmark: Clm 6431
+Script: Caroline minuscule
+Origin: Swabia?
+Date: 900
+Library: Munich, Bayerische Staatsbibliothek
+URL: http://daten.digitale-sammlungen.de/~db/0006/bsb00065410/images/index.html
+IIIF: https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb00065410/manifest
+RDF: https://opacplus.bsb-muenchen.de/title/BV037451089?format=rdf
+License: http://creativecommons.org/licenses/by-nc-sa/4.0/
