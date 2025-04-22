@@ -61,8 +61,16 @@ print(f"path: {path}\nFiles in the directory: {filelist}")
 i = 0
 # iterate over the files and check if they are images
 for file in filelist:
-    # img_path = path.join(path, file)
+    # check if the file already has been grayscaled
+    if (
+        file.endswith("_gray.jpg")
+        or file.endswith("_gray.png")
+        or file.endswith("_gray.jpeg")
+    ):
+        continue
+
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
+
         # load the image
         img_path = os.path.join(path, file)
         # create an instance of the preprocess class
