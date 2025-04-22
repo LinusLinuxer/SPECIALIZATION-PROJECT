@@ -36,11 +36,24 @@ class preprocess:
         return self.img
 
     def split_img(self):
+        # TODO: Split the image into rows
+        pass
+
+    def write_uml(self):
+        # Todo: This might be the hardest part
+        # write the polygons of the uml-file
         pass
 
     def greyscale(self):
         # Convert the image to grayscale
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before greyscale()."
+            )
         gray_scaled = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+
+        # Apply a binary threshold to convert the grayscale image to black and white
+        _, gray_scaled = cv2.threshold(gray_scaled, 127, 255, cv2.THRESH_BINARY)
         return gray_scaled
 
     def resize_img(self, width, height):
@@ -56,21 +69,19 @@ path = os.path.dirname(os.path.abspath(sys.argv[0]))
 
 # get a list of all files in the directory
 filelist = os.listdir(path)
-print(f"path: {path}\nFiles in the directory: {filelist}")
+# print(f"path: {path}\nFiles in the directory: {filelist}")
 
-i = 0
 # iterate over the files and check if they are images
 for file in filelist:
     # check if the file already has been grayscaled
     if (
-        file.endswith("_gray.jpg")
-        or file.endswith("_gray.png")
-        or file.endswith("_gray.jpeg")
+        file.startswith("gray.jpg")
+        or file.startswith("gray.png")
+        or file.startswith("gray.jpeg")
     ):
         continue
 
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
-
         # load the image
         img_path = os.path.join(path, file)
         # create an instance of the preprocess class
@@ -80,6 +91,6 @@ for file in filelist:
         # convert the image to grayscale
         gray_scaled = current_img.greyscale()
         # save the image
-        cv2.imwrite(os.path.join(path, file + "_gray"), gray_scaled)
+        cv2.imwrite(os.path.join(path, "gray_" + file), gray_scaled)
     else:
         continue
