@@ -19,13 +19,21 @@ import os
 import sys
 import cv2
 
-# pip install opencv-python
+WIDTH = 400
+HEIGHT = 200
 
 
 class preprocess:
-    def __init__(self, path, img):
-        self.path = path
-        self.img = img
+    def __init__(self, img_path):
+        # Load the image from the specified path
+        self.img_path = img_path
+
+    def load_image(self):
+        # Load the image from the specified path
+        self.img = cv2.imread(self.img_path)
+        if self.img is None:
+            raise ValueError(f"Image not found at {self.img_path}")
+        return self.img
 
     def split_img(self):
         pass
@@ -35,24 +43,35 @@ class preprocess:
         gray_scaled = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
         return gray_scaled
 
+    def resize_img(self, width, height):
+        # Resize the image to the specified width and height
+        resized_img = cv2.resize(self.img, (width, height))
+        return resized_img
+
+
+# -------------------------------------------------------------------------------------#
+
+# get the path of the current script
+path = os.path.dirname(os.path.abspath(sys.argv[0]))
 
 # get a list of all files in the directory
-path = os.path.dirname(os.path.abspath(sys.argv[0]))
 filelist = os.listdir(path)
-print(f"path: {path}, Files in the directory: {filelist}")
+print(f"path: {path}\nFiles in the directory: {filelist}")
 
 i = 0
 # iterate over the files and check if they are images
-for i in filelist[i]:
+for file in filelist:
     # img_path = path.join(path, file)
-    if i.endswith(".jpg") or i.endswith(".png"):
+    if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
         # load the image
-        img = cv2.imread(i)
+        img_path = os.path.join(path, file)
         # create an instance of the preprocess class
-        current_img = preprocess(path, img)
+        current_img = preprocess(img_path)
+        # load the image
+        current_img.load_image()
         # convert the image to grayscale
         gray_scaled = current_img.greyscale()
         # save the image
-        cv2.imwrite(os.path.join(path, "gray_" + i), gray_scaled)
+        cv2.imwrite(os.path.join(path, file + "_gray"), gray_scaled)
     else:
         continue
