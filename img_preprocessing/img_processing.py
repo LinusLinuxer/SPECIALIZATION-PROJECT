@@ -121,14 +121,19 @@ for file in filelist:
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
         # load the image
         img_path = os.path.join(path, file)
+
         # create an instance of the preprocess class
         current_img = preprocess(img_path)
+
         # load the image
         current_img.load_image()
-        # convert the image to greyscale
+
+        # apply gaussian blur (on RGB)
+        current_img.apply_gaussian_blur()
+
+        # convert to grayscale + thresholding
         grey_scaled = current_img.greyscale()
-        # TODO: Apply Gaussian blur to reduce noise
-        grey_scaled = grey_scaled.apply_gaussian_blur()
+
         # save the image
         cv2.imwrite(os.path.join(path, "gray_" + file), grey_scaled)
     else:
