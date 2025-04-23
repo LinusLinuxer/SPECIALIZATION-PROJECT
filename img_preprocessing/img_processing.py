@@ -1,6 +1,6 @@
 # Engelbrecht | Nadarajah 2025
 
-# In general: This script is used in the whole programm to round it.
+# In general: This script is used in the whole programm to round it up.
 # Our programm should be able to process images and prepare them for the model.
 # The script is designed to work with images of different sizes and formats.
 
@@ -29,7 +29,7 @@ class preprocess:
         self.img_path = img_path
 
     def load_image(self):
-        # Load the image from the specified path
+        """Load the image from the specified path"""
         self.img = cv2.imread(self.img_path)
         if self.img is None:
             raise ValueError(f"Image not found at {self.img_path}")
@@ -37,15 +37,32 @@ class preprocess:
 
     def split_img(self):
         # TODO: Split the image into rows
+        # algorithm idea:
+        # find line with the most avg. black pixels
+        # thicken the line until a certain threshold is reached (more white than black pixels)
+        # follow black pixel to include ascender and descender.
+        pass
+
+    def create_folder(self):
+        pass
+
+    def remove_noise(self):
+        # TODO: Remove noise from the image
+        #   use cv2.GaussianBlur() or cv2.medianBlur() <-- AI-suggestion whats that?
+        #
+
         pass
 
     def write_uml(self):
-        # Todo: This might be the hardest part
-        # write the polygons of the uml-file
+        # Todo: This might be the hardest part and also depending on how you approach it,
+        #   optional. We dont need no XML file, but it would be really nice to have.
+        #   write height and width of file
+        #   filename
+        #   write the polygons of the uml-file
         pass
 
     def greyscale(self):
-        # Convert the image to grayscale
+        """Convert the image to grayscale and apply a binary threshold"""
         if self.img is None:
             raise ValueError(
                 "Image not loaded. Please call load_image() before greyscale()."
@@ -57,7 +74,7 @@ class preprocess:
         return gray_scaled
 
     def resize_img(self, width, height):
-        # Resize the image to the specified width and height
+        """Resize the image to the specified width and height"""
         resized_img = cv2.resize(self.img, (width, height))
         return resized_img
 
@@ -74,11 +91,7 @@ filelist = os.listdir(path)
 # iterate over the files and check if they are images
 for file in filelist:
     # check if the file already has been grayscaled
-    if (
-        file.startswith("gray.jpg")
-        or file.startswith("gray.png")
-        or file.startswith("gray.jpeg")
-    ):
+    if file.startswith("gray_") or file.startswith("gray_") or file.startswith("gray_"):
         continue
 
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
