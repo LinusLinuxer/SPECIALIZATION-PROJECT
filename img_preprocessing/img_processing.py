@@ -78,18 +78,18 @@ class preprocess:
         pass
 
     def greyscale(self):
-        """Convert the image to grayscale and apply a binary threshold"""
+        """Convert the image to greyscale and apply a binary threshold"""
         if self.img is None:
             raise ValueError(
                 "Image not loaded. Please call load_image() before greyscale()."
             )
-        gray_scaled = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+        grey_scaled = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
 
-        # Apply a binary threshold to convert the grayscale image to black and white
-        _, gray_scaled = cv2.threshold(
-            gray_scaled, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        # Apply a binary threshold to convert the greyscale image to black and white
+        _, grey_scaled = cv2.threshold(
+            grey_scaled, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
         )
-        return gray_scaled
+        return grey_scaled
 
     def set_page_frame(self):
         """Set the page frame to the image.
@@ -114,7 +114,7 @@ filelist = os.listdir(path)
 
 # iterate over the files and check if they are images
 for file in filelist:
-    # check if the file already has been grayscaled
+    # check if the file already has been greyscaled
     if file.startswith("gray_") or file.startswith("gray_") or file.startswith("gray_"):
         continue
 
@@ -125,21 +125,20 @@ for file in filelist:
         current_img = preprocess(img_path)
         # load the image
         current_img.load_image()
+        # convert the image to greyscale
+        grey_scaled = current_img.greyscale()
         # TODO: Apply Gaussian blur to reduce noise
-        gray_scaled = gray_scaled.apply_gaussian_blur()
-        # convert the image to grayscale
-        gray_scaled = current_img.greyscale()
-        # TODO: Remove noise from the image
-        gray_scaled = gray_scaled.remove_noise()
+        grey_scaled = grey_scaled.apply_gaussian_blur()
         # save the image
-        cv2.imwrite(os.path.join(path, "gray_" + file), gray_scaled)
+        cv2.imwrite(os.path.join(path, "gray_" + file), grey_scaled)
     else:
         continue
 
+# -------------------------------------------------------------------------------------#
 
-# Display the processed grayscale image with a set window size
+# Display the processed greyscale image with a set window size
 cv2.namedWindow("Processed Image", cv2.WINDOW_NORMAL)  # Allow window resizing
 cv2.resizeWindow("Processed Image", 800, 600)  # Set the window size to 800x600
-cv2.imshow("Processed Image", gray_scaled)
+cv2.imshow("Processed Image", grey_scaled)
 cv2.waitKey(0)  # Wait until a key is pressed
 cv2.destroyAllWindows()  # Close the image window
