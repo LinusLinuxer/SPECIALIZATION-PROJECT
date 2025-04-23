@@ -37,6 +37,8 @@ HEIGHT = 200
 
 
 #! Remove this line after devolopment
+# this is a test to remove the file
+# remove the file if it exists
 if os.path.exists("grey_bsb00046285.0011.jpeg"):
     os.remove("grey_bsb00046285.0011.jpeg")
 else:
@@ -79,6 +81,7 @@ class preprocess:
         # look here for the parameters:
         # https://docs.opencv.org/3.4/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1
         self.img = cv2.GaussianBlur(self.img, (7, 7), 0)
+
         logging.info("Applying Gaussian blur...")
         return self.img
 
@@ -111,26 +114,37 @@ class preprocess:
         Crops the white borders from a binary or grayscale image.
         Assumes background is white (255).
         """
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before crop_whitespace()."
+            )
+
+        # Convert to grayscale if the image is in color
         if len(self.img.shape) == 3:
             self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
 
-        # Threshold to get binary image if not already binary
-        _, thresh = cv2.threshold(self.img, 250, 255, cv2.THRESH_BINARY)
+        # Threshold to get a binary image
+        _, binary = cv2.threshold(self.img, 240, 255, cv2.THRESH_BINARY)
 
-        # Invert: text becomes white (255), background becomes black (0)
-        inverted = cv2.bitwise_not(thresh)
+        # Invert the binary image
+        inverted = cv2.bitwise_not(binary)
 
-        # Find contours of the text areas
-        coords = cv2.findNonZero(inverted)
+        # Find contours of the non-white regions
+        contours, _ = cv2.findContours(
+            inverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
-        # Get bounding box of non-white regions
-        x, y, w, h = cv2.boundingRect(coords)
+        if contours:
+            # Get the bounding box of the largest contour
+            x, y, w, h = cv2.boundingRect(contours[0])
 
-        # Crop the original image
-        cropped = self.img[y : y + h, x : x + w]
+            # Crop the image using the bounding box
+            self.img = self.img[y : y + h, x : x + w]
+            logging.info("Cropping whitespace...")
+        else:
+            logging.warning("No contours found. Image might be completely white.")
 
-        logging.info("Cropping whitespace...")
-        return cropped
+        return self.img
 
     def resize_img(self, width, height):
         """Resize the image to the specified width and height"""
