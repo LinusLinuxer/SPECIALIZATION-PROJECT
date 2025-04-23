@@ -18,11 +18,23 @@
 import os
 import sys
 import cv2
+import numpy as np
 
+
+# Constants for image processing
 WIDTH = 400
 HEIGHT = 200
 
 
+#! Remove this line after devolopment
+if os.path.exists("gray_bsb00046285.0011.jpeg"):
+    os.remove("gray_bsb00046285.0011.jpeg")
+else:
+    print("The file does not exist")
+
+
+#! End of remove line
+# -------------------------------------------------------------------------------------#
 class preprocess:
     def __init__(self, img_path):
         # Load the image from the specified path
@@ -46,12 +58,16 @@ class preprocess:
     def create_folder(self):
         pass
 
-    def remove_noise(self):
-        # TODO: Remove noise from the image
-        #   use cv2.GaussianBlur() or cv2.medianBlur() <-- AI-suggestion whats that?
-        #
+    def apply_gaussian_blur(self):
+        """Apply Gaussian blur to the image to reduce noise"""
 
-        pass
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before apply_gaussian_blur()."
+            )
+        #   use cv2.GaussianBlur()
+        self.img = cv2.GaussianBlur(self.img, (5, 5), 0)
+        return self.img
 
     def write_uml(self):
         # Todo: This might be the hardest part and also depending on how you approach it,
@@ -70,8 +86,16 @@ class preprocess:
         gray_scaled = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
 
         # Apply a binary threshold to convert the grayscale image to black and white
-        _, gray_scaled = cv2.threshold(gray_scaled, 127, 255, cv2.THRESH_BINARY)
+        _, gray_scaled = cv2.threshold(
+            gray_scaled, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )
         return gray_scaled
+
+    def set_page_frame(self):
+        """Set the page frame to the image.
+        Remove the white space around the image.
+        """
+        pass
 
     def resize_img(self, width, height):
         """Resize the image to the specified width and height"""
@@ -101,9 +125,21 @@ for file in filelist:
         current_img = preprocess(img_path)
         # load the image
         current_img.load_image()
+        # TODO: Apply Gaussian blur to reduce noise
+        gray_scaled = gray_scaled.apply_gaussian_blur()
         # convert the image to grayscale
         gray_scaled = current_img.greyscale()
+        # TODO: Remove noise from the image
+        gray_scaled = gray_scaled.remove_noise()
         # save the image
         cv2.imwrite(os.path.join(path, "gray_" + file), gray_scaled)
     else:
         continue
+
+
+# Display the processed grayscale image with a set window size
+cv2.namedWindow("Processed Image", cv2.WINDOW_NORMAL)  # Allow window resizing
+cv2.resizeWindow("Processed Image", 800, 600)  # Set the window size to 800x600
+cv2.imshow("Processed Image", gray_scaled)
+cv2.waitKey(0)  # Wait until a key is pressed
+cv2.destroyAllWindows()  # Close the image window
