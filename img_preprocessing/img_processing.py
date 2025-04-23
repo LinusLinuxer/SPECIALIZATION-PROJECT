@@ -27,8 +27,8 @@ HEIGHT = 200
 
 
 #! Remove this line after devolopment
-if os.path.exists("gray_bsb00046285.0011.jpeg"):
-    os.remove("gray_bsb00046285.0011.jpeg")
+if os.path.exists("grey_bsb00046285.0011.jpeg"):
+    os.remove("grey_bsb00046285.0011.jpeg")
 else:
     print("The file does not exist")
 
@@ -65,8 +65,9 @@ class preprocess:
             raise ValueError(
                 "Image not loaded. Please call load_image() before apply_gaussian_blur()."
             )
-        #   use cv2.GaussianBlur()
-        self.img = cv2.GaussianBlur(self.img, (5, 5), 0)
+        # look here for the parameters:
+        # https://docs.opencv.org/3.4/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1
+        self.img = cv2.GaussianBlur(self.img, (7, 7), 0)
         return self.img
 
     def write_uml(self):
@@ -83,19 +84,40 @@ class preprocess:
             raise ValueError(
                 "Image not loaded. Please call load_image() before greyscale()."
             )
-        grey_scaled = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+        self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+        print("greyscaling...")
 
         # Apply a binary threshold to convert the greyscale image to black and white
-        _, grey_scaled = cv2.threshold(
-            grey_scaled, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        _, self.img = cv2.threshold(
+            self.img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
         )
-        return grey_scaled
 
-    def set_page_frame(self):
-        """Set the page frame to the image.
-        Remove the white space around the image.
+        return self.img
+
+    def crop_whitespace(self):
         """
-        pass
+        Crops the white borders from a binary or grayscale image.
+        Assumes background is white (255).
+        """
+        if len(self.img.shape) == 3:
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+
+        # Threshold to get binary image if not already binary
+        _, thresh = cv2.threshold(self.img, 250, 255, cv2.THRESH_BINARY)
+
+        # Invert: text becomes white (255), background becomes black (0)
+        inverted = cv2.bitwise_not(thresh)
+
+        # Find contours of the text areas
+        coords = cv2.findNonZero(inverted)
+
+        # Get bounding box of non-white regions
+        x, y, w, h = cv2.boundingRect(coords)
+
+        # Crop the original image
+        cropped = self.img[y : y + h, x : x + w]
+
+        return cropped
 
     def resize_img(self, width, height):
         """Resize the image to the specified width and height"""
@@ -115,7 +137,7 @@ filelist = os.listdir(path)
 # iterate over the files and check if they are images
 for file in filelist:
     # check if the file already has been greyscaled
-    if file.startswith("gray_") or file.startswith("gray_") or file.startswith("gray_"):
+    if file.startswith("grey_") or file.startswith("grey_") or file.startswith("grey_"):
         continue
 
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
@@ -132,10 +154,13 @@ for file in filelist:
         current_img.apply_gaussian_blur()
 
         # convert to grayscale + thresholding
-        grey_scaled = current_img.greyscale()
+        current_img.greyscale()
+
+        # crop whitespace
+        # current_img.crop_whitespace()
 
         # save the image
-        cv2.imwrite(os.path.join(path, "gray_" + file), grey_scaled)
+        cv2.imwrite(os.path.join(path, "grey_" + file), current_img.img)
     else:
         continue
 
@@ -144,6 +169,8 @@ for file in filelist:
 # Display the processed greyscale image with a set window size
 cv2.namedWindow("Processed Image", cv2.WINDOW_NORMAL)  # Allow window resizing
 cv2.resizeWindow("Processed Image", 800, 600)  # Set the window size to 800x600
-cv2.imshow("Processed Image", grey_scaled)
-cv2.waitKey(0)  # Wait until a key is pressed
-cv2.destroyAllWindows()  # Close the image window
+cv2.imshow("Processed Image", current_img.img)  # Show the image in the window
+# Wait for a key press and then close the window
+cv2.waitKey(0)
+# Close the image window
+cv2.destroyAllWindows()
