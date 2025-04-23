@@ -19,6 +19,16 @@ import os
 import sys
 import cv2
 import numpy as np
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+logging.basicConfig(
+    filename="logfile.log",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 
 # Constants for image processing
@@ -44,6 +54,7 @@ class preprocess:
         """Load the image from the specified path"""
         self.img = cv2.imread(self.img_path)
         if self.img is None:
+            logging.error(f"Image not found at {self.img_path}")
             raise ValueError(f"Image not found at {self.img_path}")
         return self.img
 
@@ -68,6 +79,7 @@ class preprocess:
         # look here for the parameters:
         # https://docs.opencv.org/3.4/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1
         self.img = cv2.GaussianBlur(self.img, (7, 7), 0)
+        logging.info("Applying Gaussian blur...")
         return self.img
 
     def write_uml(self):
@@ -85,7 +97,7 @@ class preprocess:
                 "Image not loaded. Please call load_image() before greyscale()."
             )
         self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-        print("greyscaling...")
+        logging.info("Converting to greyscale...")
 
         # Apply a binary threshold to convert the greyscale image to black and white
         _, self.img = cv2.threshold(
@@ -117,6 +129,7 @@ class preprocess:
         # Crop the original image
         cropped = self.img[y : y + h, x : x + w]
 
+        logging.info("Cropping whitespace...")
         return cropped
 
     def resize_img(self, width, height):
@@ -157,7 +170,7 @@ for file in filelist:
         current_img.greyscale()
 
         # crop whitespace
-        # current_img.crop_whitespace()
+        current_img.crop_whitespace()
 
         # save the image
         cv2.imwrite(os.path.join(path, "grey_" + file), current_img.img)
