@@ -20,6 +20,13 @@ import sys
 import cv2
 import numpy as np
 
+import logging
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 # Constants for image processing
 WIDTH = 400
@@ -39,7 +46,7 @@ else:
 # -------------------------------------------------------------------------------------#
 class preprocess:
     def __init__(self, img_path):
-        # Load the image from the specified path
+        """Initialize the image processor with the image path"""
         self.img_path = img_path
 
     def load_image(self):
@@ -89,7 +96,7 @@ class preprocess:
                 "Image not loaded. Please call load_image() before greyscale()."
             )
         self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-        print("greyscaling...")
+        logging.info("Converting to greyscale...")
 
         # Apply a binary threshold to convert the greyscale image to black and white
         _, self.img = cv2.threshold(
@@ -98,9 +105,18 @@ class preprocess:
 
         return self.img
 
+    def remove_marginal_noise(image, margin=10):
+        """
+        Trims a fixed margin from the image edges.
+        You can combine this with thresholding or edge detection to be more dynamic.
+        """
+        height, width = image.shape[:2]
+
+        return image[margin : height - margin, margin : width - margin]
+
     def crop_whitespace(self):
         """
-        Crops the white borders from a binary or grayscale image.
+        Crops the white borders from a binary or grayscale image, ignoring small noise.
         Assumes background is white (255).
         """
         if self.img is None:
@@ -109,6 +125,8 @@ class preprocess:
             )
 
         # Convert to grayscale if the image is in color
+        # shape is the amount of channels
+        # if the image is in color, it has 3 channels (RGB)
         if len(self.img.shape) == 3:
             self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
 
@@ -124,14 +142,22 @@ class preprocess:
         )
 
         if contours:
-            # Get the bounding box of the largest contour
-            x, y, w, h = cv2.boundingRect(contours[0])
+            # Filter out small contours based on area to ignore noise
+            min_area = 1000  # Minimum area threshold for contours
+            filtered_contours = [
+                contour for contour in contours if cv2.contourArea(contour) > min_area
+            ]
+            if filtered_contours:
+                # Get the bounding box of the largest filtered contour
+                x, y, w, h = cv2.boundingRect(filtered_contours[0])
 
-            # Crop the image using the bounding box
-            self.img = self.img[y : y + h, x : x + w]
-            logging.info("Cropping whitespace...")
-        else:
-            logging.warning("No contours found. Image might be completely white.")
+                # Crop the image using the bounding box
+                self.img = self.img[y : y + h, x : x + w]
+                logging.info("Cropping whitespace while ignoring noise...")
+            else:
+                logging.warning(
+                    "No significant contours found. Image might be noisy or empty."
+                )
 
         return self.img
 
@@ -174,6 +200,7 @@ for file in filelist:
 
         # crop whitespace
         # current_img.crop_whitespace()
+        current_img.crop_whitespace()
 
         # save the image
         cv2.imwrite(os.path.join(path, "grey_" + file), current_img.img)
