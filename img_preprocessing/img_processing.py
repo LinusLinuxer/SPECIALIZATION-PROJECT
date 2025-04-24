@@ -105,18 +105,19 @@ class preprocess:
 
         return self.img
 
-    def remove_marginal_noise(image, margin=10):
+    def remove_marginal_noise(self):
         """
         Trims a fixed margin from the image edges.
-        You can combine this with thresholding or edge detection to be more dynamic.
         """
-        height, width = image.shape[:2]
+        margin = 100  # Margin to trim from each edge
+        height, width = self.img.shape[:2]
+        logging.info("Cropping marginal noise...")
 
-        return image[margin : height - margin, margin : width - margin]
+        return self.img[margin : height - margin, margin : width - margin]
 
     def crop_whitespace(self):
         """
-        Crops the white borders from a binary or grayscale image, ignoring small noise.
+        Crops the white borders from a binary image, ignoring small noise.
         Assumes background is white (255).
         """
         if self.img is None:
@@ -143,7 +144,7 @@ class preprocess:
 
         if contours:
             # Filter out small contours based on area to ignore noise
-            min_area = 1000  # Minimum area threshold for contours
+            min_area = 100  # Minimum area threshold for contours
             filtered_contours = [
                 contour for contour in contours if cv2.contourArea(contour) > min_area
             ]
@@ -198,6 +199,7 @@ for file in filelist:
         # convert to grayscale + thresholding
         current_img.greyscale()
 
+        current_img.remove_marginal_noise()
         # crop whitespace
         # current_img.crop_whitespace()
         current_img.crop_whitespace()
@@ -209,11 +211,11 @@ for file in filelist:
 
 # -------------------------------------------------------------------------------------#
 
-# Display the processed greyscale image with a set window size
-cv2.namedWindow("Processed Image", cv2.WINDOW_NORMAL)  # Allow window resizing
-cv2.resizeWindow("Processed Image", 800, 600)  # Set the window size to 800x600
-cv2.imshow("Processed Image", current_img.img)  # Show the image in the window
-# Wait for a key press and then close the window
-cv2.waitKey(0)
-# Close the image window
-cv2.destroyAllWindows()
+# # Display the processed greyscale image with a set window size
+# cv2.namedWindow("Processed Image", cv2.WINDOW_NORMAL)  # Allow window resizing
+# cv2.resizeWindow("Processed Image", 800, 600)  # Set the window size to 800x600
+# cv2.imshow("Processed Image", current_img.img)  # Show the image in the window
+# # Wait for a key press and then close the window
+# cv2.waitKey(0)
+# # Close the image window
+# cv2.destroyAllWindows()
