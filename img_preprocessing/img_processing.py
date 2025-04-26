@@ -33,16 +33,6 @@ WIDTH = 400
 HEIGHT = 200
 
 
-#! Remove this line after devolopment
-# this is a test to remove the file
-# remove the file if it exists
-if os.path.exists("grey_bsb00046285.0011.jpeg"):
-    os.remove("grey_bsb00046285.0011.jpeg")
-else:
-    print("The file does not exist")
-
-
-#! End of remove line
 # -------------------------------------------------------------------------------------#
 class preprocess:
     def __init__(self, img_path):
@@ -105,37 +95,29 @@ class preprocess:
 
         return self.img
 
-    def remove_marginal_noise(self):
-        """
-        Trims a fixed margin from the image edges.
-        """
-        margin = 100  # Margin to trim from each edge
-        height, width = self.img.shape[:2]
-        logging.info("Cropping marginal noise...")
-
-        return self.img[margin : height - margin, margin : width - margin]
-
-    def crop_whitespace(self):
+    def crop_whitespace(self, min_area=None):
         """
         Crops the white borders from a binary image, ignoring small noise.
         Assumes background is white (255).
+        :param min_area: Minimum area threshold for contours. If None, it is dynamically calculated.
         """
         if self.img is None:
             raise ValueError(
                 "Image not loaded. Please call load_image() before crop_whitespace()."
             )
-
-        # Convert to grayscale if the image is in color
-        # shape is the amount of channels
-        # if the image is in color, it has 3 channels (RGB)
-        if len(self.img.shape) == 3:
-            self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-
-        # Threshold to get a binary image
-        _, binary = cv2.threshold(self.img, 240, 255, cv2.THRESH_BINARY)
+        # Check if the image is binary (0s and 255s)
+        if not np.array_equal(np.unique(self.img), [0, 255]):
+            raise ValueError("Image is not binary. Please convert it to binary first.")
+        # Check if the image is already cropped
+        if np.all(self.img == 255):
+            logging.warning("Image is already cropped. No action taken.")
+            return self.img
+        # Check if the image is empty
+        if self.img.size == 0:
+            raise ValueError("Image is empty. Cannot crop whitespace.")
 
         # Invert the binary image
-        inverted = cv2.bitwise_not(binary)
+        inverted = cv2.bitwise_not(self.img)
 
         # Find contours of the non-white regions
         contours, _ = cv2.findContours(
@@ -143,11 +125,16 @@ class preprocess:
         )
 
         if contours:
+            # Dynamically calculate min_area if not provided
+            if min_area is None:
+                # img.shape returns (height, width, channels)
+                min_area = 0.01 * self.img.shape[0] * self.img.shape[1]
+
             # Filter out small contours based on area to ignore noise
-            min_area = 100  # Minimum area threshold for contours
             filtered_contours = [
                 contour for contour in contours if cv2.contourArea(contour) > min_area
             ]
+
             if filtered_contours:
                 # Get the bounding box of the largest filtered contour
                 x, y, w, h = cv2.boundingRect(filtered_contours[0])
@@ -166,6 +153,17 @@ class preprocess:
         """Resize the image to the specified width and height"""
         resized_img = cv2.resize(self.img, (width, height))
         return resized_img
+
+    def show_img_matrix(self):
+        """Display the image matrix"""
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before show_img_matrix()."
+            )
+        # Display the image matrix
+        print("Image matrix:")
+        print(self.img)
+        return self.img
 
 
 # -------------------------------------------------------------------------------------#
@@ -199,9 +197,7 @@ for file in filelist:
         # convert to grayscale + thresholding
         current_img.greyscale()
 
-        current_img.remove_marginal_noise()
         # crop whitespace
-        # current_img.crop_whitespace()
         current_img.crop_whitespace()
 
         # save the image
