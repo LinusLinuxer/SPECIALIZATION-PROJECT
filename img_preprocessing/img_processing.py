@@ -14,7 +14,7 @@
 # use maseked grey scale images, these, according to "Cross-codex Learning for Reliable Large Scale
 # Scribe Identi cation in Medieval Manuscripts" provide the best results
 
-
+import time
 import os
 import sys
 import cv2
@@ -95,57 +95,48 @@ class preprocess:
 
         return self.img
 
-    def crop_whitespace(self, min_area=None):
+    def find_main_content_bounding_box(self):
         """
-        Crops the white borders from a binary image, ignoring small noise.
-        Assumes background is white (255).
-        :param min_area: Minimum area threshold for contours. If None, it is dynamically calculated.
+        Find the bounding box of the main content (largest connected component).
+        Assumes the image is binary (black text on white background).
+        Returns the coordinates of the bounding box as (x, y, w, h).
         """
         if self.img is None:
             raise ValueError(
-                "Image not loaded. Please call load_image() before crop_whitespace()."
+                "Image not loaded. Please call load_image() before find_main_content_bounding_box()."
             )
         # Check if the image is binary (0s and 255s)
         if not np.array_equal(np.unique(self.img), [0, 255]):
             raise ValueError("Image is not binary. Please convert it to binary first.")
-        # Check if the image is already cropped
-        if np.all(self.img == 255):
-            logging.warning("Image is already cropped. No action taken.")
-            return self.img
-        # Check if the image is empty
-        if self.img.size == 0:
-            raise ValueError("Image is empty. Cannot crop whitespace.")
 
-        # Invert the binary image
-        inverted = cv2.bitwise_not(self.img)
-
-        # Find contours of the non-white regions
-        contours, _ = cv2.findContours(
-            inverted, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        logging.info(
+            "Finding the bounding box of the main content (largest component)..."
         )
 
-        if contours:
-            # Dynamically calculate min_area if not provided
-            if min_area is None:
-                # img.shape returns (height, width, channels)
-                min_area = 0.01 * self.img.shape[0] * self.img.shape[1]
+        # Find contours in the binary image
+        contours, _ = cv2.findContours(
+            self.img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
-            # Filter out small contours based on area to ignore noise
-            filtered_contours = [
-                contour for contour in contours if cv2.contourArea(contour) > min_area
-            ]
+        if not contours:
+            raise ValueError("No contours found in the image.")
 
-            if filtered_contours:
-                # Get the bounding box of the largest filtered contour
-                x, y, w, h = cv2.boundingRect(filtered_contours[0])
+        # Find the largest contour based on area
+        largest_contour = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(largest_contour)
+        bounding_box = (x, y, w, h)
+        logging.info(f"Found bounding box of main content: {bounding_box}")
 
-                # Crop the image using the bounding box
-                self.img = self.img[y : y + h, x : x + w]
-                logging.info("Cropping whitespace while ignoring noise...")
-            else:
-                logging.warning(
-                    "No significant contours found. Image might be noisy or empty."
-                )
+        height, width = self.img.shape
+        logging.info(f"Image dimensions: {height} x {width}")
+        # Optionally, you can draw the bounding box on the image for visualization
+        cv2.rectangle(self.img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+        # Crop the image to the bounding box
+        self.img = self.img[y : y + h, x : x + w]
+        # Optionally, you can draw the bounding box on the image for visualization
+        cv2.rectangle(self.img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        logging.info(f"Cropped image to bounding box: x={x}, y={y}, w={w}, h={h}")
 
         return self.img
 
@@ -163,6 +154,21 @@ class preprocess:
         # Display the image matrix
         print("Image matrix:")
         print(self.img)
+        return self.img
+
+    def show_img(self):
+        """Display the image"""
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before show_img()."
+            )
+        # Display the image
+        # set window size
+        cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Image", 800, 600)
+        cv2.imshow("Image", self.img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         return self.img
 
 
@@ -197,21 +203,17 @@ for file in filelist:
         # convert to grayscale + thresholding
         current_img.greyscale()
 
-        # crop whitespace
-        current_img.crop_whitespace()
+        # find the bounding box of the main content and crop the image
+        croppend_img = current_img.find_main_content_bounding_box()
 
-        # save the image
-        cv2.imwrite(os.path.join(path, "grey_" + file), current_img.img)
+        # save the cropped (and greyscaled) image
+        if current_img is not None:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"cropped_image_{timestamp}.jpeg"
+            cv2.imwrite(filename, croppend_img)
+        else:
+            logging.warning(f"Could not crop image: {file}. Skipping save.")
     else:
         continue
 
 # -------------------------------------------------------------------------------------#
-
-# # Display the processed greyscale image with a set window size
-# cv2.namedWindow("Processed Image", cv2.WINDOW_NORMAL)  # Allow window resizing
-# cv2.resizeWindow("Processed Image", 800, 600)  # Set the window size to 800x600
-# cv2.imshow("Processed Image", current_img.img)  # Show the image in the window
-# # Wait for a key press and then close the window
-# cv2.waitKey(0)
-# # Close the image window
-# cv2.destroyAllWindows()
