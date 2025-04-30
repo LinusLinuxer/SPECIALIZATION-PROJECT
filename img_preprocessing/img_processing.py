@@ -19,6 +19,7 @@ import os
 import sys
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 import logging
 
@@ -46,6 +47,10 @@ class preprocess:
             raise ValueError(f"Image not found at {self.img_path}")
         return self.img
 
+    def get_image_name(self):
+        """Get the name of the image file without the path"""
+        return os.path.basename(self.img_path)
+
     def split_img(self):
         # TODO: Split the image into rows
         # algorithm idea:
@@ -68,7 +73,7 @@ class preprocess:
         # https://docs.opencv.org/3.4/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1
         self.img = cv2.GaussianBlur(self.img, (7, 7), 0)
 
-        logging.info("Applying Gaussian blur...")
+        # logging.info("Applying Gaussian blur...")
         return self.img
 
     def write_uml(self):
@@ -90,53 +95,48 @@ class preprocess:
 
         # Apply a binary threshold to convert the greyscale image to black and white
         _, self.img = cv2.threshold(
-            self.img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+            self.img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
         )
 
         return self.img
 
-    def find_main_content_bounding_box(self):
-        """
-        Find the bounding box of the main content (largest connected component).
-        Assumes the image is binary (black text on white background).
-        Returns the coordinates of the bounding box as (x, y, w, h).
-        """
+    def dilate_img(self):
+        """Dilate the image to enhance the features"""
         if self.img is None:
             raise ValueError(
-                "Image not loaded. Please call load_image() before find_main_content_bounding_box()."
+                "Image not loaded. Please call load_image() before dilate_img()."
             )
-        # Check if the image is binary (0s and 255s)
-        if not np.array_equal(np.unique(self.img), [0, 255]):
-            raise ValueError("Image is not binary. Please convert it to binary first.")
+        # dilute the image to enhance the features, (especially sideways)
+        kernel = np.ones((1, 40), np.uint8)
+        self.img = cv2.dilate(self.img, kernel, iterations=1)
+        logging.info("Dilating the image...")
+        return self.img
 
-        logging.info(
-            "Finding the bounding box of the main content (largest component)..."
-        )
+    def line_segmentation(self):
+        """Segment the image into lines using contours"""
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before line_segmentation()."
+            )
 
-        # Find contours in the binary image
-        contours, _ = cv2.findContours(
+        # Find contours in the image
+        contours, hierarchy = cv2.findContours(
             self.img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
 
-        if not contours:
-            raise ValueError("No contours found in the image.")
+        # Sort contours by their y-coordinate (top to bottom)
+        sorted_contours_lines = sorted(
+            contours, key=lambda ctr: cv2.boundingRect(ctr)[1]
+        )
 
-        # Find the largest contour based on area
-        largest_contour = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(largest_contour)
-        bounding_box = (x, y, w, h)
-        logging.info(f"Found bounding box of main content: {bounding_box}")
+        # Draw contours on the image
+        img_with_contours = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
+        for ctr in sorted_contours_lines:
+            x, y, w, h = cv2.boundingRect(ctr)
+            cv2.rectangle(img_with_contours, (x, y), (x + w, y + h), (41, 55, 214), 10)
+        self.img = img_with_contours
 
-        height, width = self.img.shape
-        logging.info(f"Image dimensions: {height} x {width}")
-        # Optionally, you can draw the bounding box on the image for visualization
-        cv2.rectangle(self.img, (x, y), (x + w, y + h), (255, 0, 0), 2)
-
-        # Crop the image to the bounding box
-        self.img = self.img[y : y + h, x : x + w]
-        # Optionally, you can draw the bounding box on the image for visualization
-        cv2.rectangle(self.img, (x, y), (x + w, y + h), (255, 0, 0), 2)
-        logging.info(f"Cropped image to bounding box: x={x}, y={y}, w={w}, h={h}")
+        logging.info(f"Number of contours found: {len(sorted_contours_lines)}")
 
         return self.img
 
@@ -184,12 +184,14 @@ filelist = os.listdir(path)
 # iterate over the files and check if they are images
 for file in filelist:
     # check if the file already has been greyscaled
-    if file.startswith("grey_") or file.startswith("grey_") or file.startswith("grey_"):
+    if file.startswith("grey_") or file.startswith("cropped"):
         continue
 
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
         # load the image
         img_path = os.path.join(path, file)
+        file_name = os.path.basename(img_path)
+        logging.info(f"Processing image: {file_name}")
 
         # create an instance of the preprocess class
         current_img = preprocess(img_path)
@@ -202,18 +204,19 @@ for file in filelist:
 
         # convert to grayscale + thresholding
         current_img.greyscale()
-
-        # find the bounding box of the main content and crop the image
-        croppend_img = current_img.find_main_content_bounding_box()
+        current_img.dilate_img()
+        current_img.line_segmentation()
 
         # save the cropped (and greyscaled) image
         if current_img is not None:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
-            filename = f"cropped_image_{timestamp}.jpeg"
-            cv2.imwrite(filename, croppend_img)
+            filename = f"{file_name}_{timestamp}.jpeg"
+            cv2.imwrite(filename, current_img.img)
         else:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
     else:
         continue
 
 # -------------------------------------------------------------------------------------#
+
+current_img.show_img()
