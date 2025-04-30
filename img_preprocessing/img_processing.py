@@ -105,14 +105,14 @@ class preprocess:
 
         return self.img
 
-    def dilate_img(self):
+    def dilate_img(self, x_kernel_size: int):
         """Dilate the image to enhance the features"""
         if self.img is None:
             raise ValueError(
                 "Image not loaded. Please call load_image() before dilate_img()."
             )
         # dilute the image to enhance the features, (especially sideways)
-        kernel = np.ones((1, 40), np.uint8)
+        kernel = np.ones((1, x_kernel_size), np.uint8)
         self.img = cv2.dilate(self.img, kernel, iterations=1)
         logging.info("Dilating the image...")
         return self.img
@@ -143,31 +143,44 @@ class preprocess:
 
         logging.info(f"Number of contours found: {len(sorted_contours_lines)}")
 
-        return self.img
+        return self.img, len(sorted_contours_lines)
 
     def count_lines_with_dillution(self):
-        """This method counts the amount of lines with different Dilutions"""
-        df = pd.DataFrame(columns=["image_name", "dilution", "number_of_lines"])
-
+        """This method counts the amount of lines with different dilutions.
+        It is modified for testing purposes and will not be used in the final version.
+        """
         if self.img is None:
             raise ValueError(
                 "Image not loaded. Please call load_image() before count_lines_with_dillution()."
             )
 
-        # Append the result to the DataFrame
-        df = pd.concat(
-            [
-                df,
-                pd.DataFrame(
-                    {
-                        "image_name": [self.get_image_name()],
-                        "dilution": [kernel_size],
-                        "number_of_lines": [num_lines],
-                    }
-                ),
-            ],
-            ignore_index=True,
-        )
+        df = pd.DataFrame(columns=["image_name", "dilution", "number_of_lines"])
+
+        # Define the kernel sizes to test
+        kernel_sizes = list(range(20, 100, 5))
+
+        # Iterate over the kernel sizes
+        for kernel_size in kernel_sizes:
+            # Dilate the image with the current kernel size
+            self.dilate_img(kernel_size)
+
+            # Get the processed image and the number of lines from line_segmentation
+            processed_img, num_lines = self.line_segmentation()
+
+            # Append the result to the DataFrame
+            df = pd.concat(
+                [
+                    df,
+                    pd.DataFrame(
+                        {
+                            "image_name": [self.get_image_name()],
+                            "dilution": [kernel_size],
+                            "number_of_lines": [num_lines],
+                        }
+                    ),
+                ],
+                ignore_index=True,
+            )
 
         return df
 
@@ -236,9 +249,8 @@ for file in filelist:
 
         # convert to grayscale + thresholding
         current_img.greyscale()
-        current_img.dilate_img()
+        current_img.dilate_img(40)
         current_img.line_segmentation()
-        current_img.count_lines_with_dillution()
 
         # save the cropped (and greyscaled) image
         if current_img is not None:
@@ -252,4 +264,5 @@ for file in filelist:
 
 # -------------------------------------------------------------------------------------#
 
-current_img.show_img()
+# current_img.show_img()
+current_img.count_lines_with_dillution()
