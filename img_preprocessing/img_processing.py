@@ -177,7 +177,7 @@ class preprocess:
             self.dilate_img(kernel_size)
 
             # Get the processed image and the number of lines from line_segmentation
-            processed_img, num_lines = self.line_segmentation()
+            processed_img, sorted_contours_lines = self.line_segmentation()
 
             # Append the result to the DataFrame
             df = pd.concat(
@@ -187,32 +187,16 @@ class preprocess:
                         {
                             "image_name": [self.get_image_name()],
                             "dilution": [kernel_size],
-                            "number_of_lines": [num_lines],
+                            "number_of_lines": [sorted_contours_lines],
                         }
                     ),
                 ],
                 ignore_index=True,
             )
+        # write df to csv
+        df.to_csv("line_detection_results.csv", index=False)
 
-        # Plot the results using matplotlib
-        plt.figure(figsize=(10, 6))
-        for image_name in df["image_name"].unique():
-            image_df = df[df["image_name"] == image_name]
-            plt.plot(
-                image_df["dilution"],
-                image_df["number_of_lines"],
-                label=image_name,
-                marker="o",
-            )
-
-        plt.title("Number of Lines Detected vs. Dilution")
-        plt.xlabel("Dilution (Kernel Size)")
-        plt.ylabel("Number of Lines Detected")
-        plt.legend()
-        plt.grid(True)
-        plt.savefig("line_detection_vs_dilution.png")
-
-        return df
+        # return df
 
     def resize_img(self, width, height):
         """Resize the image to the specified width and height"""
@@ -253,7 +237,6 @@ path = os.path.dirname(os.path.abspath(sys.argv[0]))
 
 # get a list of all files in the directory
 filelist = os.listdir(path)
-# print(f"path: {path}\nFiles in the directory: {filelist}")
 
 # iterate over the files and check if they are images
 for file in filelist:
@@ -274,28 +257,26 @@ for file in filelist:
         current_img.load_image()
         current_img.crop_img()
 
-        # apply gaussian blur (on RGB)
-        current_img.apply_gaussian_blur()
-
         # for finding the right dilution, this method has to be called before the others
         # it will not be in the code for the final version.
         current_img.count_lines_with_dillution()
 
+        # apply gaussian blur (on RGB)
+        # current_img.apply_gaussian_blur()
+
         # convert to grayscale + thresholding
-        current_img.greyscale()
-        current_img.dilate_img(40)
-        current_img.line_segmentation()
+        # current_img.greyscale()
+        # current_img.dilate_img(40)
+        # current_img.line_segmentation()
 
         # save the cropped (and greyscaled) image
         if current_img is not None:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             filename = f"{file_name}_{timestamp}.jpeg"
-            cv2.imwrite(filename, current_img.img)
+            # cv2.imwrite(filename, current_img.img)
         else:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
     else:
         continue
 
 # -------------------------------------------------------------------------------------#
-
-# current_img.show_img()
