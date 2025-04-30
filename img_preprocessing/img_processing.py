@@ -20,6 +20,7 @@ import sys
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import logging
 
@@ -62,6 +63,18 @@ class preprocess:
     def create_folder(self):
         pass
 
+    def crop_img(self):
+        """Crop the image by 5% from every edge"""
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before crop_img()."
+            )
+        height, width = self.img.shape[:2]
+        crop_x = int(width * 0.05)
+        crop_y = int(height * 0.05)
+        self.img = self.img[crop_y : height - crop_y, crop_x : width - crop_x]
+        return self.img
+
     def apply_gaussian_blur(self):
         """Apply Gaussian blur to the image to reduce noise"""
 
@@ -75,14 +88,6 @@ class preprocess:
 
         # logging.info("Applying Gaussian blur...")
         return self.img
-
-    def write_uml(self):
-        # Todo: This might be the hardest part and also depending on how you approach it,
-        #   optional. We dont need no XML file, but it would be really nice to have.
-        #   write height and width of file
-        #   filename
-        #   write the polygons of the uml-file
-        pass
 
     def greyscale(self):
         """Convert the image to greyscale and apply a binary threshold"""
@@ -139,6 +144,32 @@ class preprocess:
         logging.info(f"Number of contours found: {len(sorted_contours_lines)}")
 
         return self.img
+
+    def count_lines_with_dillution(self):
+        """This method counts the amount of lines with different Dilutions"""
+        df = pd.DataFrame(columns=["image_name", "dilution", "number_of_lines"])
+
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before count_lines_with_dillution()."
+            )
+
+        # Append the result to the DataFrame
+        df = pd.concat(
+            [
+                df,
+                pd.DataFrame(
+                    {
+                        "image_name": [self.get_image_name()],
+                        "dilution": [kernel_size],
+                        "number_of_lines": [num_lines],
+                    }
+                ),
+            ],
+            ignore_index=True,
+        )
+
+        return df
 
     def resize_img(self, width, height):
         """Resize the image to the specified width and height"""
@@ -198,6 +229,7 @@ for file in filelist:
 
         # load the image
         current_img.load_image()
+        current_img.crop_img()
 
         # apply gaussian blur (on RGB)
         current_img.apply_gaussian_blur()
@@ -206,6 +238,7 @@ for file in filelist:
         current_img.greyscale()
         current_img.dilate_img()
         current_img.line_segmentation()
+        current_img.count_lines_with_dillution()
 
         # save the cropped (and greyscaled) image
         if current_img is not None:
