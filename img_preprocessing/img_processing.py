@@ -150,6 +150,21 @@ class preprocess:
         # TODO: or vertical
         pass
 
+    def count_lines_with_dillution_for_multiple_images(self, image_paths):
+        """
+        Wrapper function for above. Counts lines with different dilutions for multiple images.
+        """
+        results = pd.DataFrame(columns=["image_name", "dilution", "number_of_lines"])
+
+        for image_path in image_paths:
+            self.img_path = image_path  # Set the image path
+            self.load_image()  # Load the image into self.img
+            df = self.count_lines_with_dillution()  # Reuse the existing method
+            results = pd.concat([results, df], ignore_index=True)
+
+        results.to_csv("line_detection_results_all_images.csv", index=False)
+        # return results
+
     def count_lines_with_dillution(self):
         """This method counts the amount of lines with different dilutions.
         It is modified for testing purposes and will not be used in the final version.
@@ -193,10 +208,8 @@ class preprocess:
                 ],
                 ignore_index=True,
             )
-        # write df to csv
-        df.to_csv("line_detection_results.csv", index=False)
 
-        # return df
+        return df
 
     def resize_img(self, width, height):
         """Resize the image to the specified width and height"""
@@ -240,7 +253,7 @@ filelist = os.listdir(path)
 
 # iterate over the files and check if they are images
 for file in filelist:
-    # check if the file already has been greyscaled
+    # check if the file already has been greyscaled by the filename
     if file.startswith("grey_") or file.startswith("cropped"):
         continue
 
@@ -259,7 +272,7 @@ for file in filelist:
 
         # for finding the right dilution, this method has to be called before the others
         # it will not be in the code for the final version.
-        current_img.count_lines_with_dillution()
+        # current_img.count_lines_with_dillution()
 
         # apply gaussian blur (on RGB)
         # current_img.apply_gaussian_blur()
@@ -278,5 +291,18 @@ for file in filelist:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
     else:
         continue
+
+# -------------------------------------------------------------------------------------#
+# Comment this on out in the final version, it is just here to collect data.
+# Collect all image paths
+image_paths = [
+    os.path.join(path, file)
+    for file in filelist
+    if file.endswith((".jpg", ".png", ".jpeg"))
+]
+logging.info("Image paths:", image_paths)
+
+# Process all images
+current_img.count_lines_with_dillution_for_multiple_images(image_paths)
 
 # -------------------------------------------------------------------------------------#
