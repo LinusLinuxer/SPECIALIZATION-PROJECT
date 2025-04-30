@@ -145,6 +145,11 @@ class preprocess:
 
         return self.img, len(sorted_contours_lines)
 
+    def remove_bad_segementaion(self):
+        # TODO: Remove lines that are too short, i.e. > 10% of the image width
+        # TODO: or vertical
+        pass
+
     def count_lines_with_dillution(self):
         """This method counts the amount of lines with different dilutions.
         It is modified for testing purposes and will not be used in the final version.
@@ -156,12 +161,19 @@ class preprocess:
 
         df = pd.DataFrame(columns=["image_name", "dilution", "number_of_lines"])
 
+        # Save the original image for reuse in the loop
+        original_img = self.img.copy()
+
         # Define the kernel sizes to test
         kernel_sizes = list(range(20, 100, 5))
 
         # Iterate over the kernel sizes
         for kernel_size in kernel_sizes:
-            # Dilate the image with the current kernel size
+            # Reset to original image at each iteration
+            self.img = original_img.copy()
+
+            # Apply preprocessing steps
+            self.greyscale()
             self.dilate_img(kernel_size)
 
             # Get the processed image and the number of lines from line_segmentation
@@ -181,6 +193,24 @@ class preprocess:
                 ],
                 ignore_index=True,
             )
+
+        # Plot the results using matplotlib
+        plt.figure(figsize=(10, 6))
+        for image_name in df["image_name"].unique():
+            image_df = df[df["image_name"] == image_name]
+            plt.plot(
+                image_df["dilution"],
+                image_df["number_of_lines"],
+                label=image_name,
+                marker="o",
+            )
+
+        plt.title("Number of Lines Detected vs. Dilution")
+        plt.xlabel("Dilution (Kernel Size)")
+        plt.ylabel("Number of Lines Detected")
+        plt.legend()
+        plt.grid(True)
+        plt.savefig("line_detection_vs_dilution.png")
 
         return df
 
@@ -247,6 +277,10 @@ for file in filelist:
         # apply gaussian blur (on RGB)
         current_img.apply_gaussian_blur()
 
+        # for finding the right dilution, this method has to be called before the others
+        # it will not be in the code for the final version.
+        current_img.count_lines_with_dillution()
+
         # convert to grayscale + thresholding
         current_img.greyscale()
         current_img.dilate_img(40)
@@ -265,4 +299,3 @@ for file in filelist:
 # -------------------------------------------------------------------------------------#
 
 # current_img.show_img()
-current_img.count_lines_with_dillution()
