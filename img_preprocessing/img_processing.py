@@ -54,8 +54,14 @@ class preprocess:
         # follow black pixel to include ascender and descender.
         pass
 
-    def create_folder(self):
-        pass
+    def create_folder(self, path):
+        """Create a folder to save the rows of the processed images"""
+        folder_name = self.get_image_name()
+        new_folder_path = os.path.join(path, folder_name)
+        if not os.path.exists(new_folder_path):
+            os.makedirs(new_folder_path, exist_ok=True)
+            logging.info(f"Folder created: {new_folder_path}")
+        return new_folder_path
 
     def crop_img(self):
         """Crop the image by 5% from every edge"""
@@ -270,9 +276,15 @@ for file in filelist:
             output_folder = os.path.join(path, "processed_images")
             os.makedirs(output_folder, exist_ok=True)
             output_path = os.path.join(output_folder, filename)
+
             # Save the image
             cv2.imwrite(output_path, current_img.img)
             logging.info(f"Image saved as: {output_path}")
+
+            # create output folder for split images
+            split_folder = os.path.join(output_folder, current_img.get_image_name())
+            os.makedirs(split_folder, exist_ok=True)
+
         else:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
     else:
