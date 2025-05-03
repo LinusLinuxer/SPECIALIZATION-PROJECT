@@ -16,7 +16,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import logging
-from tqdm import tqdm
 
 # Set up logging
 logging.basicConfig(
@@ -47,21 +46,13 @@ class preprocess:
         """Get the name of the image file without the path"""
         return os.path.basename(self.img_path)
 
-    def split_img(self):
-        # TODO: Split the image into rows
-        # algorithm idea:
-        # find line with the most avg. black pixels
-        # thicken the line until a certain threshold is reached (more white than black pixels)
-        # follow black pixel to include ascender and descender.
-        pass
-
     def create_folder(self, path):
         """Create a folder to save the rows of the processed images"""
         folder_name = self.get_image_name()
         new_folder_path = os.path.join(path, folder_name)
         if not os.path.exists(new_folder_path):
             os.makedirs(new_folder_path, exist_ok=True)
-            logging.info(f"Folder created: {new_folder_path}")
+            # logging.info(f"Folder created: {new_folder_path}")
         return new_folder_path
 
     def crop_img(self):
@@ -98,7 +89,7 @@ class preprocess:
                 "Image not loaded. Please call load_image() before greyscale()."
             )
         self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-        logging.info("Converting to greyscale...")
+        # logging.info("Converting to greyscale...")
 
         # Apply a binary threshold to convert the greyscale image to black and white
         _, self.img = cv2.threshold(
@@ -116,7 +107,7 @@ class preprocess:
         # dilute the image to enhance the features, (especially sideways)
         kernel = np.ones((1, x_kernel_size), np.uint8)
         self.img = cv2.dilate(self.img, kernel, iterations=1)
-        logging.info("Dilating the image...")
+        # logging.info("Dilating the image...")
         return self.img
 
     def line_segmentation(self):
@@ -136,7 +127,7 @@ class preprocess:
             contours, key=lambda ctr: cv2.boundingRect(ctr)[1]
         )
 
-        logging.info(f"Number of contours found: {len(self.sorted_contours_lines)}")
+        # logging.info(f"Number of contours found: {len(self.sorted_contours_lines)}")
 
         # Return the processed image and the number of contours
         return self.img, len(self.sorted_contours_lines)
@@ -168,10 +159,10 @@ class preprocess:
             if cv2.boundingRect(ctr)[3] <= cv2.boundingRect(ctr)[2]
         ]
 
-        logging.info(
-            f"Number of contours before filtering: {len(self.sorted_contours_lines)}"
-        )
-        logging.info(f"Number of contours after filtering: {len(filtered_contours)}")
+        # logging.info(
+        #     f"Number of contours before filtering: {len(self.sorted_contours_lines)}"
+        # )
+        # logging.info(f"Number of contours after filtering: {len(filtered_contours)}")
 
         # Update the sorted_contours_lines with the filtered contours
         self.sorted_contours_lines = filtered_contours
@@ -199,14 +190,27 @@ class preprocess:
         self.img = img_with_lines
         return self.img
 
-    def cut_img(self, folder_path):
+    def split_img(self, folder_path, sorted_contours_lines):
         """Cut the image into smaller images based on the segmented lines"""
         if self.img is None:
             raise ValueError(
                 "Image not loaded. Please call load_image() before cut_img()."
             )
+        # Ensure the folder path exists
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path, exist_ok=True)
 
-        pass
+        os.chdir(folder_path)
+        # Iterate over the sorted contours and save each segmented line as a separate image
+        for i, ctr in enumerate(sorted_contours_lines):
+            x, y, w, h = cv2.boundingRect(ctr)
+            # Crop the image using the bounding rectangle
+            cropped_img = self.img[y : y + h, x : x + w]
+
+            # Save the cropped image with a unique filename
+            filename = f"line_{i}.png"
+            cv2.imwrite(filename, cropped_img)
+            # logging.info(f"Saved segmented line {i} as {filename}")
 
     def resize_img(self, width, height):
         """Resize the image to the specified width and height"""
@@ -250,8 +254,6 @@ filelist = os.listdir(path)
 
 # iterate over the files and check if they are images
 for file in filelist:
-    # Initialize a progress bar
-    progress_bar = tqdm(filelist, desc="Processing images", unit="file")
     # check if the file is an image
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
         # load the image
@@ -280,7 +282,7 @@ for file in filelist:
         # save the cropped (and greyscaled) image
         if current_img is not None:
             # Create a new filename for the processed image
-            filename = f"{file_name}_processed.jpeg"
+            filename = f"{file_name}"
             output_folder = os.path.join(path, "processed_images")
             os.makedirs(output_folder, exist_ok=True)
             output_path = os.path.join(output_folder, filename)
@@ -292,7 +294,18 @@ for file in filelist:
             # Save the image to the created split folder
             split_output_path = os.path.join(split_folder, filename)
             cv2.imwrite(split_output_path, current_img.img)
-            logging.info(f"Image saved as: {split_output_path}")
+            # logging.info(f"Image saved as: {split_output_path}")
+
+            # copy the original image to the output folder
+            original_img = cv2.imread(img_path)
+            cv2.imwrite(output_path, original_img)
+
+            # copy the original image to the split folder
+            current_img.img = original_img
+            current_img.greyscale()
+
+            # split the image into rows
+            current_img.split_img(split_folder, current_img.sorted_contours_lines)
 
         else:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
