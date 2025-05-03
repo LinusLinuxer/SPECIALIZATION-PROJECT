@@ -26,6 +26,7 @@ logging.basicConfig(
 # Constants for image processing
 WIDTH = 400
 HEIGHT = 200
+x_kernel_size = 50  # Dilution kernel size
 
 
 # -------------------------------------------------------------------------------------#
@@ -63,6 +64,7 @@ class preprocess:
                 "Image not loaded. Please call load_image() before crop_img()."
             )
         height, width = self.img.shape[:2]
+        # Crop 5% from each edge
         crop_x = int(width * 0.05)
         crop_y = int(height * 0.05)
         self.img = self.img[crop_y : height - crop_y, crop_x : width - crop_x]
@@ -184,8 +186,13 @@ class preprocess:
                 "Image not loaded. Please call load_image() before draw_segmentation()."
             )
 
+        # Ensure the image is in BGR format
+        if len(self.img.shape) == 2:  # Grayscale image
+            img_with_lines = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
+        else:  # Already a color image
+            img_with_lines = self.img.copy()
+
         # Draw the segmented lines on the image
-        img_with_lines = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
         for ctr in self.sorted_contours_lines:
             x, y, w, h = cv2.boundingRect(ctr)
             cv2.rectangle(img_with_lines, (x, y), (x + w, y + h), (41, 55, 214), 10)
@@ -195,73 +202,6 @@ class preprocess:
     def cut_img(self):
         """Cut the image into smaller images based on the segmented lines"""
         pass
-
-    def count_lines_with_dillution_for_multiple_images(self, image_paths):
-        """
-        Wrapper function for above. Counts lines with different dilutions for multiple images.
-        """
-        results = pd.DataFrame(columns=["image_name", "dilution", "number_of_lines"])
-
-        for image_path in image_paths:
-            self.img_path = image_path  # Set the image path
-            self.load_image()  # Load the image into self.img
-            df = self.count_lines_with_dillution()  # Reuse the existing method
-            results = pd.concat([results, df], ignore_index=True)
-
-        results.to_csv("line_detection_results_all_images.csv", index=False)
-        # return results
-
-    def count_lines_with_dillution(self):
-        """This method counts the amount of lines with different dilutions.
-        It is modified for testing purposes and will not be used in the final version.
-        """
-        #! We need to find the right dilution for the image. Doing some digging with the count_script.py
-        #! we found out that we need an average of 23 lines per image.
-
-        if self.img is None:
-            raise ValueError(
-                "Image not loaded. Please call load_image() before count_lines_with_dillution()."
-            )
-
-        df = pd.DataFrame(columns=["image_name", "dilution", "number_of_lines"])
-
-        # Save the original image for reuse in the loop
-        original_img = self.img.copy()
-
-        # Define the kernel sizes to test
-        kernel_sizes = list(range(40, 125, 5))
-
-        # Iterate over the kernel sizes
-        for kernel_size in kernel_sizes:
-            # Reset to original image at each iteration
-            self.img = original_img.copy()
-
-            # Apply preprocessing steps
-            self.greyscale()
-            self.dilate_img(kernel_size)
-
-            # Get the processed image and the number of lines from line_segmentation
-            processed_img, sorted_contours_lines = self.line_segmentation()
-
-            # Remove bad segmentations
-            sorted_contours_lines = self.remove_bad_segementaion()
-
-            # Append the result to the DataFrame
-            df = pd.concat(
-                [
-                    df,
-                    pd.DataFrame(
-                        {
-                            "image_name": [self.get_image_name()],
-                            "dilution": [kernel_size],
-                            "number_of_lines": [len(sorted_contours_lines)],
-                        }
-                    ),
-                ],
-                ignore_index=True,
-            )
-
-        return df
 
     def resize_img(self, width, height):
         """Resize the image to the specified width and height"""
@@ -305,10 +245,7 @@ filelist = os.listdir(path)
 
 # iterate over the files and check if they are images
 for file in filelist:
-    # check if the file already has been greyscaled by the filename
-    if file.startswith("grey_") or file.startswith("cropped"):
-        continue
-
+    # check if the file is an image
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
         # load the image
         img_path = os.path.join(path, file)
@@ -323,35 +260,27 @@ for file in filelist:
         current_img.crop_img()
 
         # apply gaussian blur (on RGB)
-        # current_img.apply_gaussian_blur()
+        current_img.apply_gaussian_blur()
 
         # convert to grayscale + thresholding
-        # current_img.greyscale()
-        # current_img.dilate_img(40)
-        # current_img.line_segmentation()
-        # current_img.remove_bad_segementaion()
+        current_img.greyscale()
+        current_img.dilate_img(x_kernel_size)
+        current_img.line_segmentation()
+        current_img.remove_bad_segementaion()
+        current_img.draw_segmentation()
+        # current_img.show_img()
 
         # save the cropped (and greyscaled) image
         if current_img is not None:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             filename = f"{file_name}_{timestamp}.jpeg"
-            # cv2.imwrite(filename, current_img.img)
+            output_folder = os.path.join(path, "processed_images")
+            os.makedirs(output_folder, exist_ok=True)
+            output_path = os.path.join(output_folder, filename)
+            # Save the image
+            # cv2.imwrite(output_path, current_img.img)
+            logging.info(f"Image saved as: {output_path}")
         else:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
     else:
         continue
-
-# -------------------------------------------------------------------------------------#
-# Comment this on out in the final version, it is just here to collect data.
-# Collect all image paths
-image_paths = [
-    os.path.join(path, file)
-    for file in filelist
-    if file.endswith((".jpg", ".png", ".jpeg"))
-]
-logging.info("Image paths:", image_paths)
-
-# Process all images
-current_img.count_lines_with_dillution_for_multiple_images(image_paths)
-
-# -------------------------------------------------------------------------------------#
