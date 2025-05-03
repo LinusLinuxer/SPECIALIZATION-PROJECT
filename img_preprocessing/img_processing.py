@@ -277,13 +277,14 @@ for file in filelist:
             os.makedirs(output_folder, exist_ok=True)
             output_path = os.path.join(output_folder, filename)
 
-            # Save the image
-            cv2.imwrite(output_path, current_img.img)
-            logging.info(f"Image saved as: {output_path}")
-
             # create output folder for split images
             split_folder = os.path.join(output_folder, current_img.get_image_name())
             os.makedirs(split_folder, exist_ok=True)
+
+            # Save the image to the created split folder
+            split_output_path = os.path.join(split_folder, filename)
+            cv2.imwrite(split_output_path, current_img.img)
+            logging.info(f"Image saved as: {split_output_path}")
 
         else:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
