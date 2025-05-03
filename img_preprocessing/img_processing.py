@@ -5,12 +5,6 @@
 # The script is designed to work with images of different sizes and formats.
 
 
-# This script contains functions to preprocess images for the model.
-# It includes functions to load images, resize them, and convert them to the appropriate format.
-# 1. load_image: Loads an image from a file path.
-# 2. cut images into patches: Cuts an image into smaller patches.
-# 3. resize_image: Resizes an image to the specified width and height.
-
 # use maseked grey scale images, these, according to "Cross-codex Learning for Reliable Large Scale
 # Scribe Identi cation in Medieval Manuscripts" provide the best results
 
@@ -130,25 +124,59 @@ class preprocess:
         )
 
         # Sort contours by their y-coordinate (top to bottom)
-        sorted_contours_lines = sorted(
+        self.sorted_contours_lines = sorted(
             contours, key=lambda ctr: cv2.boundingRect(ctr)[1]
         )
 
         # Draw contours on the image
-        # img_with_contours = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
-        # for ctr in sorted_contours_lines:
-        #     x, y, w, h = cv2.boundingRect(ctr)
-        #     cv2.rectangle(img_with_contours, (x, y), (x + w, y + h), (41, 55, 214), 10)
-        # self.img = img_with_contours
+        img_with_contours = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
+        for ctr in self.sorted_contours_lines:
+            x, y, w, h = cv2.boundingRect(ctr)
+            cv2.rectangle(img_with_contours, (x, y), (x + w, y + h), (41, 55, 214), 10)
+        self.img = img_with_contours
 
-        logging.info(f"Number of contours found: {len(sorted_contours_lines)}")
+        logging.info(f"Number of contours found: {len(self.sorted_contours_lines)}")
 
-        return self.img, len(sorted_contours_lines)
+        # Return the processed image and the number of contours
+        return self.img, len(self.sorted_contours_lines)
 
     def remove_bad_segementaion(self):
-        # TODO: Remove lines that are too short, i.e. > 10% of the image width or height
-        # TODO: or vertical or the whole image
-        pass
+        """Remove bad segmentations based on size"""
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before remove_bad_segementaion()."
+            )
+
+        # Get the height and width of the image
+        height, width = self.img.shape[:2]
+        min_line_width = int(width * 0.7)  # 0.7 is a good value
+        min_line_height = int(height * 0.1)  # 0.1 is a good value
+
+        # Filter out bad contours
+        filtered_contours = [
+            ctr
+            for ctr in self.sorted_contours_lines
+            if cv2.boundingRect(ctr)[2]
+            >= min_line_width * 0.5  # Reduce width threshold
+            and cv2.boundingRect(ctr)[3]
+            >= min_line_height * 0.1  # Reduce height threshold
+        ]
+
+        # filter out contours that are taller in height than width
+        filtered_contours = [
+            ctr
+            for ctr in filtered_contours
+            if cv2.boundingRect(ctr)[3] <= cv2.boundingRect(ctr)[2]
+        ]
+
+        logging.info(
+            f"Number of contours before filtering: {len(self.sorted_contours_lines)}"
+        )
+        logging.info(f"Number of contours after filtering: {len(filtered_contours)}")
+
+        # Update the sorted_contours_lines with the filtered contours
+        self.sorted_contours_lines = filtered_contours
+        return self.sorted_contours_lines
 
     def draw_segmentation(self):
         """Draw the segmented lines on the image"""
@@ -164,6 +192,10 @@ class preprocess:
             cv2.rectangle(img_with_lines, (x, y), (x + w, y + h), (41, 55, 214), 10)
         self.img = img_with_lines
         return self.img
+
+    def cut_img(self):
+        """Cut the image into smaller images based on the segmented lines"""
+        pass
 
     def count_lines_with_dillution_for_multiple_images(self, image_paths):
         """
@@ -184,6 +216,9 @@ class preprocess:
         """This method counts the amount of lines with different dilutions.
         It is modified for testing purposes and will not be used in the final version.
         """
+        #! We need to find the right dilution for the image. Doing some digging with the count_script.py
+        #! we found out that we need an average of 23 lines per image.
+
         if self.img is None:
             raise ValueError(
                 "Image not loaded. Please call load_image() before count_lines_with_dillution()."
@@ -195,7 +230,7 @@ class preprocess:
         original_img = self.img.copy()
 
         # Define the kernel sizes to test
-        kernel_sizes = list(range(20, 100, 5))
+        kernel_sizes = list(range(40, 125, 5))
 
         # Iterate over the kernel sizes
         for kernel_size in kernel_sizes:
@@ -209,6 +244,9 @@ class preprocess:
             # Get the processed image and the number of lines from line_segmentation
             processed_img, sorted_contours_lines = self.line_segmentation()
 
+            # Remove bad segmentations
+            sorted_contours_lines = self.remove_bad_segementaion()
+
             # Append the result to the DataFrame
             df = pd.concat(
                 [
@@ -217,7 +255,7 @@ class preprocess:
                         {
                             "image_name": [self.get_image_name()],
                             "dilution": [kernel_size],
-                            "number_of_lines": [sorted_contours_lines],
+                            "number_of_lines": [len(sorted_contours_lines)],
                         }
                     ),
                 ],
@@ -285,10 +323,6 @@ for file in filelist:
         current_img.load_image()
         current_img.crop_img()
 
-        # for finding the right dilution, this method has to be called before the others
-        # it will not be in the code for the final version.
-        # current_img.count_lines_with_dillution()
-
         # apply gaussian blur (on RGB)
         # current_img.apply_gaussian_blur()
 
@@ -296,6 +330,7 @@ for file in filelist:
         # current_img.greyscale()
         # current_img.dilate_img(40)
         # current_img.line_segmentation()
+        # current_img.remove_bad_segementaion()
 
         # save the cropped (and greyscaled) image
         if current_img is not None:
