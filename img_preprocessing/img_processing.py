@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import logging
+from tqdm import tqdm
 
 # Set up logging
 logging.basicConfig(
@@ -253,13 +254,16 @@ path = os.path.dirname(os.path.abspath(sys.argv[0]))
 filelist = os.listdir(path)
 
 # iterate over the files and check if they are images
-for file in filelist:
+progress_bar = tqdm(filelist, desc="Processing images", unit="file")
+for file in progress_bar:
+    # Update the progress bar description with the current file being processed
+    progress_bar.set_description(f"Processing {file}")
     # check if the file is an image
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
         # load the image
         img_path = os.path.join(path, file)
         file_name = os.path.basename(img_path)
-        logging.info(f"Processing image: {file_name}")
+        # logging.info(f"Processing image: {file_name}")
 
         # create an instance of the preprocess class
         current_img = preprocess(img_path)
