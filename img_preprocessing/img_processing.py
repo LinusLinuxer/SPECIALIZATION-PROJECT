@@ -135,20 +135,35 @@ class preprocess:
         )
 
         # Draw contours on the image
-        img_with_contours = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
-        for ctr in sorted_contours_lines:
-            x, y, w, h = cv2.boundingRect(ctr)
-            cv2.rectangle(img_with_contours, (x, y), (x + w, y + h), (41, 55, 214), 10)
-        self.img = img_with_contours
+        # img_with_contours = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
+        # for ctr in sorted_contours_lines:
+        #     x, y, w, h = cv2.boundingRect(ctr)
+        #     cv2.rectangle(img_with_contours, (x, y), (x + w, y + h), (41, 55, 214), 10)
+        # self.img = img_with_contours
 
         logging.info(f"Number of contours found: {len(sorted_contours_lines)}")
 
         return self.img, len(sorted_contours_lines)
 
     def remove_bad_segementaion(self):
-        # TODO: Remove lines that are too short, i.e. > 10% of the image width
-        # TODO: or vertical
+        # TODO: Remove lines that are too short, i.e. > 10% of the image width or height
+        # TODO: or vertical or the whole image
         pass
+
+    def draw_segmentation(self):
+        """Draw the segmented lines on the image"""
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before draw_segmentation()."
+            )
+
+        # Draw the segmented lines on the image
+        img_with_lines = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
+        for ctr in self.sorted_contours_lines:
+            x, y, w, h = cv2.boundingRect(ctr)
+            cv2.rectangle(img_with_lines, (x, y), (x + w, y + h), (41, 55, 214), 10)
+        self.img = img_with_lines
+        return self.img
 
     def count_lines_with_dillution_for_multiple_images(self, image_paths):
         """
