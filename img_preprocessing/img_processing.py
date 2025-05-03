@@ -1,12 +1,16 @@
 # Engelbrecht | Nadarajah 2025
 
-# In general: This script is used in the whole programm to round it up.
-# Our programm should be able to process images and prepare them for the model.
-# The script is designed to work with images of different sizes and formats.
+"""
+This script is designed for preprocessing and segmenting images, particularly for tasks involving line segmentation.
+It provides a class `preprocess` that includes various methods to load, process, and manipulate images.
+The script performs operations such as cropping, Gaussian blurring, grayscale conversion, thresholding,
+dilation, line segmentation, and saving segmented lines as separate images.
 
+The main functionality iterates through all image files in the current directory, processes them,
+and saves the results in a structured output folder. This is useful for preparing images for further
+analysis or machine learning tasks.
+"""
 
-# use maseked grey scale images, these, according to "Cross-codex Learning for Reliable Large Scale
-# Scribe Identi cation in Medieval Manuscripts" provide the best results
 
 import time
 import os
@@ -213,10 +217,15 @@ class preprocess:
             cv2.imwrite(filename, cropped_img)
             # logging.info(f"Saved segmented line {i} as {filename}")
 
-    def resize_img(self, width, height):
+    def resize_img(self):
         """Resize the image to the specified width and height"""
-        resized_img = cv2.resize(self.img, (width, height))
-        return resized_img
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before resize_img()."
+            )
+
+        witdh, height = self.img.shape[:2]
+        # Resize the image to the specified width and height
 
     def show_img_matrix(self):
         """Display the image matrix"""
@@ -309,7 +318,40 @@ for file in progress_bar:
             current_img.greyscale()
 
             # split the image into rows
+            # use the sorted contours to split the image into rows
             current_img.split_img(split_folder, current_img.sorted_contours_lines)
+
+            filelist_split_folder = os.listdir(split_folder)
+            # iterate over the files in the split folder
+
+            # get the dimensions of the image
+            _, width = current_img.img.shape[:2]
+
+            for file in filelist_split_folder:
+                # ignore the original image
+                if file == current_img.get_image_name():
+                    continue
+                # Read the file as an image
+                file_path = os.path.join(split_folder, file)
+                image = cv2.imread(file_path)
+
+                # Ensure the image was loaded successfully
+                if image is None:
+                    logging.warning(f"Could not read image: {file}. Skipping resize.")
+                    continue
+
+                # Get the height of the current image
+                height, _ = image.shape[:2]
+
+                # Resize the image to the same width as the original
+                resized_image = cv2.resize(
+                    image,
+                    (width, height),
+                    interpolation=cv2.INTER_NEAREST,
+                )
+
+                # Save the resized image back to the split folder
+                cv2.imwrite(file_path, resized_image)
 
         else:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
