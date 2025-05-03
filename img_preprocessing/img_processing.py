@@ -129,13 +129,6 @@ class preprocess:
             contours, key=lambda ctr: cv2.boundingRect(ctr)[1]
         )
 
-        # Draw contours on the image
-        img_with_contours = cv2.cvtColor(self.img, cv2.COLOR_GRAY2BGR)
-        for ctr in self.sorted_contours_lines:
-            x, y, w, h = cv2.boundingRect(ctr)
-            cv2.rectangle(img_with_contours, (x, y), (x + w, y + h), (41, 55, 214), 10)
-        self.img = img_with_contours
-
         logging.info(f"Number of contours found: {len(self.sorted_contours_lines)}")
 
         # Return the processed image and the number of contours
@@ -150,17 +143,15 @@ class preprocess:
 
         # Get the height and width of the image
         height, width = self.img.shape[:2]
-        min_line_width = int(width * 0.7)  # 0.7 is a good value
-        min_line_height = int(height * 0.1)  # 0.1 is a good value
+        min_line_width = int(width * 0.35)
+        min_line_height = int(height * 0.01)
 
         # Filter out bad contours
         filtered_contours = [
             ctr
             for ctr in self.sorted_contours_lines
-            if cv2.boundingRect(ctr)[2]
-            >= min_line_width * 0.5  # Reduce width threshold
-            and cv2.boundingRect(ctr)[3]
-            >= min_line_height * 0.1  # Reduce height threshold
+            if cv2.boundingRect(ctr)[2] >= min_line_width
+            and cv2.boundingRect(ctr)[3] >= min_line_height
         ]
 
         # filter out contours that are taller in height than width
@@ -195,7 +186,9 @@ class preprocess:
         # Draw the segmented lines on the image
         for ctr in self.sorted_contours_lines:
             x, y, w, h = cv2.boundingRect(ctr)
-            cv2.rectangle(img_with_lines, (x, y), (x + w, y + h), (41, 55, 214), 10)
+            cv2.rectangle(
+                img_with_lines, (x, y), (x + w, y + h), (125, 255, 125), 10
+            )  # Green color for contours
         self.img = img_with_lines
         return self.img
 
@@ -272,13 +265,13 @@ for file in filelist:
 
         # save the cropped (and greyscaled) image
         if current_img is not None:
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            filename = f"{file_name}_{timestamp}.jpeg"
+            # Create a new filename for the processed image
+            filename = f"{file_name}_processed.jpeg"
             output_folder = os.path.join(path, "processed_images")
             os.makedirs(output_folder, exist_ok=True)
             output_path = os.path.join(output_folder, filename)
             # Save the image
-            # cv2.imwrite(output_path, current_img.img)
+            cv2.imwrite(output_path, current_img.img)
             logging.info(f"Image saved as: {output_path}")
         else:
             logging.warning(f"Could not crop image: {file}. Skipping save.")
