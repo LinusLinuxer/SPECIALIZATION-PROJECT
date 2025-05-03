@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import logging
+from tqdm import tqdm
 
 # Set up logging
 logging.basicConfig(
@@ -198,8 +199,13 @@ class preprocess:
         self.img = img_with_lines
         return self.img
 
-    def cut_img(self):
+    def cut_img(self, folder_path):
         """Cut the image into smaller images based on the segmented lines"""
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before cut_img()."
+            )
+
         pass
 
     def resize_img(self, width, height):
@@ -244,6 +250,8 @@ filelist = os.listdir(path)
 
 # iterate over the files and check if they are images
 for file in filelist:
+    # Initialize a progress bar
+    progress_bar = tqdm(filelist, desc="Processing images", unit="file")
     # check if the file is an image
     if file.endswith(".jpg") or file.endswith(".png") or file.endswith(".jpeg"):
         # load the image
