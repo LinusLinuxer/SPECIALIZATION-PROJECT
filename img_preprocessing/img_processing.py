@@ -214,16 +214,6 @@ class preprocess:
             cv2.imwrite(filename, cropped_img)
             # logging.info(f"Saved segmented line {i} as {filename}")
 
-    def resize_img(self):
-        """Resize the image to the specified width and height"""
-        if self.img is None:
-            raise ValueError(
-                "Image not loaded. Please call load_image() before resize_img()."
-            )
-
-        witdh, height = self.img.shape[:2]
-        # Resize the image to the specified width and height
-
     def show_img_matrix(self):
         """Display the image matrix"""
         if self.img is None:
