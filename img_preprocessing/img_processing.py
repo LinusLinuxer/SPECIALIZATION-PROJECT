@@ -26,8 +26,6 @@ logging.basicConfig(
 )
 
 # Constants for image processing
-WIDTH = 400
-HEIGHT = 200
 x_kernel_size = 50  # Dilution kernel size
 
 
@@ -100,6 +98,15 @@ class preprocess:
 
         return self.img
 
+    def mod_greyscale(self):
+        """Convert an image to greyscale, use found value for that"""
+        if self.img is None:
+            raise ValueError(
+                "Image not loaded. Please call load_image() before greyscale()."
+            )
+
+        pass
+
     def dilate_img(self, x_kernel_size: int):
         """Dilate the image to enhance the features"""
         if self.img is None:
@@ -160,11 +167,6 @@ class preprocess:
             for ctr in filtered_contours
             if cv2.boundingRect(ctr)[3] <= cv2.boundingRect(ctr)[2]
         ]
-
-        # logging.info(
-        #     f"Number of contours before filtering: {len(self.sorted_contours_lines)}"
-        # )
-        # logging.info(f"Number of contours after filtering: {len(filtered_contours)}")
 
         # Update the sorted_contours_lines with the filtered contours
         self.sorted_contours_lines = filtered_contours
