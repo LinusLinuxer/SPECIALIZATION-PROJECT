@@ -1,3 +1,2 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:c5761eb7fd0ec00912267e7ef45b8be4f6bd9b584c0d8db152b25519df07b10e
-size 79
+.so filter=lfs diff=lfs merge=lfs -text
+.so.2 filter=lfs diff=lfs merge=lfs -text
