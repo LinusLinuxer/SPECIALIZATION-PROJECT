@@ -1,2 +1,5 @@
 .venv/
-Run_models
+# Modelle und große Dateien ignorieren
+Run_models/
+*.keras
+*.h5
