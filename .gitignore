@@ -3,3 +3,4 @@
 Run_models/
 *.keras
 *.h5
+*.npy
