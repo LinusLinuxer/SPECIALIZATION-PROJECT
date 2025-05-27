@@ -1,1 +1,0 @@
-ys: "Is that all?" and gives the order: "Number!"
